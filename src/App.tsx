@@ -17,7 +17,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [hasConverted, setHasConverted] = useState(false);
   const [currencies, setCurrencies] = useState<
-    { code: string; name: string; flag?: string }[]
+    { code: string; name: string; flag?: string; flagUrl?: string }[]
   >([]);
 
   React.useEffect(() => {
@@ -26,11 +26,20 @@ function App() {
       try {
         const data = await fetchCurrencies(controller.signal);
         const list = Object.entries(data)
-          .map(([code, name]) => ({
-            code,
-            name,
-            flag: makeFlagFromCurrency(code),
-          }))
+          .map(([code, name]) => {
+            const region = code === "EUR" ? "EU" : code.slice(0, 2);
+            const isValidRegion = /^[A-Za-z]{2}$/.test(region);
+            const flagUrl = isValidRegion
+              ? `https://flagcdn.com/24x18/${region.toLowerCase()}.png`
+              : undefined;
+
+            return {
+              code,
+              name,
+              flag: makeFlagFromCurrency(code),
+              flagUrl,
+            };
+          })
           .sort((a, b) => a.code.localeCompare(b.code));
         setCurrencies(list);
         const codes = list.map((c) => c.code);
