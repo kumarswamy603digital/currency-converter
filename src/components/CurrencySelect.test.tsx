@@ -21,8 +21,8 @@ describe("CurrencySelect", () => {
         currencies={currencies}
       />
     );
-    const select = screen.getByLabelText(/from/i) as HTMLSelectElement;
-    fireEvent.change(select, { target: { value: "USD" } });
+    fireEvent.click(screen.getByLabelText(/from/i));
+    fireEvent.click(screen.getByRole("option", { name: /usd/i }));
     expect(onChange).toHaveBeenCalledWith("USD");
   });
 
@@ -38,7 +38,8 @@ describe("CurrencySelect", () => {
         disabledCodes={["USD"]}
       />
     );
-    const option = screen.getByRole("option", { name: /🇺🇸 usd/i });
+    fireEvent.click(screen.getByLabelText(/to/i));
+    const option = screen.getByRole("option", { name: /usd/i });
     expect(option).toBeDisabled();
   });
 
@@ -53,6 +54,7 @@ describe("CurrencySelect", () => {
         currencies={[{ code: "JPY" }, { code: "USD" }]}
       />
     );
+    fireEvent.click(screen.getByLabelText(/to/i));
     expect(screen.getByRole("option", { name: /jpy/i })).toBeInTheDocument();
   });
 
@@ -67,7 +69,6 @@ describe("CurrencySelect", () => {
         currencies={currencies}
       />
     );
-    const select = screen.getByLabelText(/from/i) as HTMLSelectElement;
-    expect(select.value).toBe("USD");
+    expect(screen.getByLabelText(/from/i)).toHaveTextContent("USD");
   });
 });

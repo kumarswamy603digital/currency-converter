@@ -8,6 +8,39 @@ import { getRates } from "./api/getRates";
 import { makeFlagFromCurrency } from "./utils/makeFlagFromCurrency";
 import { convertAmount } from "./utils/convertAmount";
 
+function currencyRowsFromApi(
+  data: Record<string, string>
+): { code: string; name: string; flag?: string; flagUrl?: string }[] {
+  return Object.entries(data)
+    .map(([code, name]) => {
+      const region = code === "EUR" ? "EU" : code.slice(0, 2);
+      const isValidRegion = /^[A-Za-z]{2}$/.test(region);
+      const flagUrl = isValidRegion
+        ? `https://flagcdn.com/24x18/${region.toLowerCase()}.png`
+        : undefined;
+
+      return {
+        code,
+        name,
+        flag: makeFlagFromCurrency(code),
+        flagUrl,
+      };
+    })
+    .sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/** Used when every network source fails so the form is still usable. */
+const OFFLINE_CURRENCY_NAMES: Record<string, string> = {
+  AUD: "Australian Dollar",
+  CAD: "Canadian Dollar",
+  EUR: "Euro",
+  GBP: "British Pound",
+  INR: "Indian Rupee",
+  JPY: "Japanese Yen",
+  NPR: "Nepalese Rupee",
+  USD: "US Dollar",
+};
+
 function App() {
   const [amount, setAmount] = useState<string>("1");
   const [from, setFrom] = useState<string>("USD");
@@ -25,30 +58,18 @@ function App() {
     async function loadSymbols() {
       try {
         const data = await fetchCurrencies(controller.signal);
-        const list = Object.entries(data)
-          .map(([code, name]) => {
-            const region = code === "EUR" ? "EU" : code.slice(0, 2);
-            const isValidRegion = /^[A-Za-z]{2}$/.test(region);
-            const flagUrl = isValidRegion
-              ? `https://flagcdn.com/24x18/${region.toLowerCase()}.png`
-              : undefined;
-
-            return {
-              code,
-              name,
-              flag: makeFlagFromCurrency(code),
-              flagUrl,
-            };
-          })
-          .sort((a, b) => a.code.localeCompare(b.code));
+        const list = currencyRowsFromApi(data);
         setCurrencies(list);
         const codes = list.map((c) => c.code);
         if (!codes.includes(from) || !codes.includes(to) || from === to) {
           setFrom(codes[0]);
           setTo(codes.find((c) => c !== codes[0]) || codes[0]);
         }
-      } catch (e) {
-        // keep silent
+      } catch {
+        const list = currencyRowsFromApi(OFFLINE_CURRENCY_NAMES);
+        setCurrencies(list);
+        setFrom("USD");
+        setTo("NPR");
       }
     }
     loadSymbols();

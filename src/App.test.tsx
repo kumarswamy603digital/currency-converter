@@ -33,9 +33,7 @@ describe("App", () => {
     });
     render(<App />);
 
-    // Wait for selects to be populated
-    const fromSelect = await screen.findByLabelText(/from/i);
-    const toSelect = screen.getByLabelText(/to/i);
+    await screen.findByLabelText(/from/i);
 
     // Ensure initial state then change amount and convert
     const input = screen.getByLabelText(/enter amount/i) as HTMLInputElement;
@@ -47,11 +45,7 @@ describe("App", () => {
       expect(screen.getByText(/eur =/i)).toBeInTheDocument();
     });
 
-    expect(getRates).toHaveBeenCalledWith(
-      1,
-      (fromSelect as HTMLSelectElement).value,
-      (toSelect as HTMLSelectElement).value
-    );
+    expect(getRates).toHaveBeenCalledWith(1, "EUR", "USD");
   });
 
   it("shows error when conversion fails", async () => {
@@ -159,10 +153,8 @@ describe("App", () => {
     await screen.findByText(/eur =/i);
     // force an error via next call
     (getRates as any).mockRejectedValueOnce(new Error("oops"));
-    fireEvent.change(screen.getByLabelText(/to/i), {
-      target: { value: "EUR" },
-    });
-    // After changing, helper should be shown again, and no result/error
+    fireEvent.change(input, { target: { value: "2" } });
+    // After changing amount, helper should be shown again, and no result/error
     expect(
       screen.getByText(/enter an amount and click convert/i)
     ).toBeInTheDocument();

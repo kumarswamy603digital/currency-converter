@@ -28,8 +28,11 @@ describe("fetchCurrencies", () => {
     );
   });
 
-  it("throws on non-ok response", async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue({ ok: false } as any);
+  it("throws when Frankfurter and fallback both return non-ok", async () => {
+    globalThis.fetch = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false } as any)
+      .mockResolvedValueOnce({ ok: false } as any);
     await expect(fetchCurrencies()).rejects.toThrow(
       "Failed to load currencies"
     );
@@ -48,9 +51,29 @@ describe("fetchCurrencies", () => {
     );
   });
 
-  it("propagates fetch rejection errors", async () => {
-    const err = new Error("network down");
-    globalThis.fetch = vi.fn().mockRejectedValue(err);
-    await expect(fetchCurrencies()).rejects.toBe(err);
+  it("uses CDN fallback when Frankfurter fails", async () => {
+    const fallbackData = { usd: "US Dollar", eur: "Euro" };
+    const mockJson = vi.fn().mockResolvedValue(fallbackData);
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network down"))
+      .mockResolvedValueOnce({ ok: true, json: mockJson } as any);
+
+    const result = await fetchCurrencies();
+    expect(result).toEqual({ USD: "US Dollar", EUR: "Euro" });
+    expect((globalThis.fetch as any).mock.calls[1][0]).toContain("jsdelivr.net");
+  });
+
+  it("passes AbortSignal to fallback request", async () => {
+    const controller = new AbortController();
+    const mockJson = vi.fn().mockResolvedValue({ usd: "US Dollar" });
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("fail"))
+      .mockResolvedValueOnce({ ok: true, json: mockJson } as any);
+    await fetchCurrencies(controller.signal);
+    expect((globalThis.fetch as any).mock.calls[1][1]).toEqual({
+      signal: controller.signal,
+    });
   });
 });

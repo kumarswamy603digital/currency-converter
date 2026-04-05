@@ -25,10 +25,11 @@ describe("getRates", () => {
     expect(calledUrl).toContain("to=EUR");
   });
 
-  it("throws with status code on error", async () => {
+  it("throws when Frankfurter fails and fallback is non-ok", async () => {
     globalThis.fetch = vi
       .fn()
-      .mockResolvedValue({ ok: false, status: 503 } as any);
+      .mockResolvedValueOnce({ ok: false, status: 503 } as any)
+      .mockResolvedValueOnce({ ok: false, status: 503 } as any);
     await expect(getRates(1, "USD", "EUR")).rejects.toThrow(
       "Frankfurter error: 503"
     );
@@ -47,9 +48,31 @@ describe("getRates", () => {
     expect(u.searchParams.get("to")).toBe("JPY");
   });
 
-  it("propagates fetch rejection", async () => {
+  it("uses CDN fallback when Frankfurter network fails", async () => {
+    const fallbackPayload = {
+      date: "2026-01-01",
+      usd: { eur: 2 },
+    };
+    const json = vi.fn().mockResolvedValue(fallbackPayload);
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce({ ok: true, json } as any);
+
+    const res = await getRates(10, "USD", "EUR");
+    expect(res).toEqual({
+      amount: 10,
+      base: "USD",
+      rates: { EUR: 20 },
+    });
+  });
+
+  it("propagates fetch rejection when fallback also fails", async () => {
     const err = new Error("offline");
-    globalThis.fetch = vi.fn().mockRejectedValue(err);
+    globalThis.fetch = vi
+      .fn()
+      .mockRejectedValueOnce(err)
+      .mockRejectedValueOnce(err);
     await expect(getRates(2, "USD", "EUR")).rejects.toBe(err);
   });
 });
